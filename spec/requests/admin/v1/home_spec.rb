@@ -5,7 +5,7 @@ describe "Home", type: :request do
 
   it "tests home" do
     get '/admin/v1/home', headers: auth_header(user)
-    expect(body_json).to eq({ 'message' => 'UHULLLLLLLLLL!!!!!' })
+    expect(body_json).to eq({ 'message' => 'Uhul!' })
   end
 
   it "tests home" do

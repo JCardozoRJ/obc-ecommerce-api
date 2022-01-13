@@ -12,4 +12,4 @@ module Paginatable
       limit(length).offset(starts_at)
     end
   end
-end
+end 
