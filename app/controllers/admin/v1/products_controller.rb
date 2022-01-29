@@ -1,10 +1,10 @@
 module Admin::V1
   class ProductsController < ApiController
-    before_action :load_product, only: %i(update destroy)
-    before_action :initialize_saving_service, only: %i(create update)
+    before_action :load_product, only: %i(show update destroy)
     
     def index
-      @products = load_products
+      @loading_service = Admin::ModelLoadingService.new(Product.all, searchable_params)
+      @loading_service.call
     end
 
     def create
@@ -12,6 +12,8 @@ module Admin::V1
     rescue Admin::ProductSavingService::NotSavedProductError
       render_error(fields: @saving_service.errors)
     end
+
+    def show; end
 
     def update
       run_service
@@ -22,26 +24,22 @@ module Admin::V1
     def destroy
       @product.productable.destroy!
       @product.destroy!
-    rescue Admin::ProductSavingService::NotSavedProductError
+    rescue ActiveRecord::RecordNotDestroyed
       render_error(fields: @product.errors.messages.merge(@product.productable.errors.messages))
     end
 
     private
 
-    def load_products
-      permitted = params.permit({ search: :name }, { order: {} }, :page, :length)
-      Admin::ModelLoadingService.new(Product.all, permitted).call
-    end
-
     def load_product
       @product = Product.find(params[:id])
     end
 
-    def initialize_saving_service
-      @saving_service = Admin::ProductSavingService.new(product_params.to_h, @product)
+    def searchable_params
+      params.permit({ search: :name }, { order: {} }, :page, :length)
     end
 
     def run_service
+      @saving_service = Admin::ProductSavingService.new(product_params.to_h, @product)
       @saving_service.call
       @product = @saving_service.product
       render :show
@@ -49,15 +47,9 @@ module Admin::V1
 
     def product_params
       return {} unless params.has_key?(:product)
-      permitted_params = params.require(:product).permit(:id, :name, :description, :image, :price, :productable)
+      permitted_params = params.require(:product).permit(:id, :name, :description, :image, :price, :productable,
+                                                         :status, :featured, category_ids: [])
       permitted_params.merge(productable_params)
-    end
-
-    def save_category!
-      @category.save!
-      render :show
-    rescue
-      render_error(fields: @category.errors.messages)
     end
 
     def productable_params
